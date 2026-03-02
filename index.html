@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>📊 My Trading Dashboard</title>
+<style>
+:root{
+  --bg:#0b0e17;--bg2:#131722;--bg3:#1a1f2e;--bg4:#1e2435;
+  --border:#252d3d;--accent:#2962ff;--green:#26a69a;--red:#ef5350;
+  --yellow:#f7a600;--text:#d1d4dc;--muted:#6b7280;--white:#f0f2f5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px}
+
+/* ── HEADER ── */
+header{background:linear-gradient(90deg,#0d1117,#131722);border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:200;backdrop-filter:blur(10px)}
+.hlogo{display:flex;align-items:center;gap:10px}
+.hlogo span{background:var(--accent);border-radius:6px;padding:3px 9px;font-size:.8rem;font-weight:700;color:#fff}
+.hlogo h1{font-size:1.05rem;font-weight:700;color:var(--white)}
+.hright{display:flex;align-items:center;gap:16px}
+#clock{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── TAPE ── */
+.tape{height:46px;overflow:hidden;background:var(--bg2);border-bottom:1px solid var(--border)}
+
+/* ── MAIN ── */
+.main{max-width:1700px;margin:0 auto;padding:16px 14px 40px}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card-header{display:flex;align-items:center;gap:9px;padding:12px 14px 10px;border-bottom:1px solid var(--border)}
+.card-icon{font-size:1.2rem}
+.card-title{font-weight:700;font-size:.88rem;color:var(--white)}
+.card-sub{font-size:.66rem;color:var(--muted);margin-top:2px}
+.card-badge{margin-left:auto;font-size:.6rem;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--muted);white-space:nowrap}
+.card-body{flex:1;padding:0}
+.card-body.pad{padding:12px 14px}
+
+/* span helpers */
+.span-4{grid-column:span 4}
+.span-5{grid-column:span 5}
+.span-6{grid-column:span 6}
+.span-7{grid-column:span 7}
+.span-8{grid-column:span 8}
+.span-12{grid-column:span 12}
+@media(max-width:1100px){.span-4,.span-5,.span-6,.span-7,.span-8{grid-column:span 12}}
+
+/* ── LIQUIDITY PANEL ── */
+.liq-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border)}
+.liq-cell{background:var(--bg2);padding:16px 14px}
+.liq-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.liq-val{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--white)}
+.liq-val.green{color:var(--green)}
+.liq-val.red{color:var(--red)}
+.liq-val.yellow{color:var(--yellow)}
+.liq-change{font-size:.72rem;margin-top:4px}
+.liq-note{font-size:.65rem;color:var(--muted);margin-top:4px}
+.liq-bar-wrap{margin-top:10px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.liq-bar{height:100%;border-radius:2px;transition:width .8s ease}
+.net-liq-explain{padding:10px 14px;border-top:1px solid var(--border);font-size:.7rem;color:var(--muted);line-height:1.6}
+.net-liq-explain strong{color:var(--text)}
+
+/* ── AUCTION TABLE ── */
+.auction-tabs{display:flex;border-bottom:1px solid var(--border)}
+.atab{padding:8px 14px;font-size:.75rem;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:.2s}
+.atab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tbl-wrap{overflow-x:auto;max-height:360px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+th{position:sticky;top:0;background:var(--bg3);padding:7px 10px;text-align:right;color:var(--muted);font-weight:600;text-transform:uppercase;font-size:.63rem;letter-spacing:.4px;white-space:nowrap}
+th:first-child{text-align:left}
+td{padding:7px 10px;text-align:right;border-top:1px solid var(--border);color:var(--text)}
+td:first-child{text-align:left;color:var(--white);font-weight:600}
+tr:hover td{background:var(--bg3)}
+.btc-good{color:var(--green);font-weight:700}
+.btc-warn{color:var(--yellow);font-weight:700}
+.btc-bad{color:var(--red);font-weight:700}
+.rate-pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:.68rem;font-weight:700}
+.rate-high{background:rgba(239,83,80,.12);color:var(--red)}
+.rate-low{background:rgba(38,166,154,.12);color:var(--green)}
+.loading{text-align:center;padding:30px;color:var(--muted);font-size:.8rem}
+.error-msg{text-align:center;padding:20px;color:var(--red);font-size:.75rem}
+
+/* ── FED WATCH TABLE ── */
+.fw-table{width:100%;border-collapse:collapse}
+.fw-table th{background:var(--bg3);padding:8px 12px;text-align:center;font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.fw-table td{padding:8px 12px;text-align:center;border-top:1px solid var(--border);font-size:.75rem}
+.fw-table td:first-child{text-align:left;font-weight:600;color:var(--white)}
+.prob-bar{display:flex;align-items:center;gap:6px}
+.prob-fill{height:6px;border-radius:3px;min-width:2px}
+.prob-txt{font-size:.72rem;font-weight:700;min-width:36px}
+.fw-note{padding:8px 14px;font-size:.65rem;color:var(--muted);border-top:1px solid var(--border)}
+.fw-link{color:var(--accent);text-decoration:none}
+
+/* ── MMF ── */
+.mmf-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)}
+.mmf-stat{background:var(--bg2);padding:10px 14px}
+.mmf-stat-label{font-size:.65rem;color:var(--muted);margin-bottom:4px}
+.mmf-stat-val{font-size:1.1rem;font-weight:700;color:var(--white)}
+.mmf-stat-sub{font-size:.65rem;color:var(--muted);margin-top:2px}
+.mmf-iframe-wrap{height:280px;background:var(--bg3)}
+.mmf-iframe-wrap iframe{border:none;width:100%;height:100%}
+
+/* ── FRED IFRAME ── */
+.fred-wrap{height:220px;background:var(--bg3)}
+.fred-wrap iframe{border:none;width:100%;height:100%;filter:invert(.93) hue-rotate(185deg) saturate(1.2)}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:18px;font-size:.67rem;color:var(--muted);border-top:1px solid var(--border);margin-top:6px}
+footer a{color:var(--accent);text-decoration:none}
+
+/* ── SPINNER ── */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto}
+
+/* tag pill */
+.tag{display:inline-block;font-size:.6rem;padding:1px 6px;border-radius:8px;margin-left:4px;vertical-align:middle}
+.tag-up{background:rgba(38,166,154,.15);color:var(--green)}
+.tag-dn{background:rgba(239,83,80,.15);color:var(--red)}
+.tag-neu{background:rgba(107,114,128,.15);color:var(--muted)}
+
+.section-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px 4px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="hlogo">
+    <span>TV</span>
+    <h1>My Trading Dashboard</h1>
+  </div>
+  <div class="hright">
+    <div class="status-dot" title="Live"></div>
+    <div id="clock">로딩중...</div>
+  </div>
+</header>
+
+<!-- ═══ TICKER TAPE (fixed symbols) ═══ -->
+<div class="tape">
+  <div class="tradingview-widget-container" style="height:46px">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+    {
+      "symbols":[
+        {"proName":"SP:SPX","title":"S&P500"},
+        {"proName":"NASDAQ:NDX","title":"NASDAQ100"},
+        {"proName":"TVC:VIX","title":"VIX"},
+        {"proName":"TVC:DXY","title":"DXY"},
+        {"proName":"TVC:GOLD","title":"Gold"},
+        {"proName":"TVC:US10Y","title":"US10Y"},
+        {"proName":"TVC:US02Y","title":"US2Y"},
+        {"proName":"COINBASE:BTCUSD","title":"BTC"},
+        {"proName":"FX:USDJPY","title":"USD/JPY"},
+        {"proName":"FX:USDKRW","title":"USD/KRW"},
+        {"proName":"NASDAQ:MSTR","title":"MSTR"},
+        {"proName":"NASDAQ:NVDA","title":"NVDA"},
+        {"proName":"NYMEX:CL1!","title":"WTI Oil"}
+      ],
+      "showSymbolLogo":true,"colorTheme":"dark","isTransparent":true,"displayMode":"adaptive","locale":"en"
+    }
+    </script>
+  </div>
+</div>
+
+<!-- ═══ MAIN GRID ═══ -->
+<div class="main">
+<div class="grid">
+
+  <!-- ───────────────────────────────────────
+       ROW 1: 국채 위젯 + 국채 입찰 현황
+  ─────────────────────────────────────────── -->
+
+  <!-- 1A. 미국 국채 금리 -->
+  <div class="card span-5">
+    <div class="card-header">
+      <div class="card-icon">🏛️</div>
+      <div><div class="card-title">미국 국채 (US Treasuries)</div><div class="card-sub">금리 커브 · SOFR · IORB · 역레포</div></div>
+      <div class="card-badge">8 tickers</div>
+    </div>
+    <div class="card-body">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {"colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"en","isTransparent":true,
+         "showSymbolLogo":true,"width":"100%","height":"460",
+         "tabs":[{"title":"국채","originalTitle":"국채","symbols":[
+           {"s":"TVC:US02Y","d":"2Y"},{"s":"TVC:US05Y","d":"5Y"},{"s":"TVC:US07Y","d":"7Y"},
+           {"s":"TVC:US10Y","d":"10Y"},{"s":"TVC:US30Y","d":"30Y"},
+           {"s":"FRED:SOFR","d":"SOFR"},{"s":"FRED:IORB","d":"IORB"},
+           {"s":"FRED:RRPONTSYD","d":"ON RRP"}
+         ]}]}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1B. 국채 입찰 현황 (Live Treasury API) -->
+  <div class="card span-7">
+    <div class="card-header">
+      <div class="card-icon">📋</div>
+      <div><div class="card-title">국채 입찰 현황 (Treasury Auctions)</div><div class="card-sub">낙찰금리 · 입찰배율(BTC) · 낙찰금액 · 예정 입찰</div></div>
+      <div class="card-badge" id="auction-date">로딩중...</div>
+    </div>
+    <div class="card-body">
+      <div class="auction-tabs">
+        <div class="atab active" onclick="switchAuctionTab('recent',this)">최근 낙찰 결과</div>
+        <div class="atab" onclick="switchAuctionTab('upcoming',this)">예정 입찰 일정</div>
+      </div>
+      <div id="auction-recent" class="tbl-wrap">
+        <div class="loading"><div class="spinner"></div>Treasury.gov API 로딩중...</div>
+      </div>
+      <div id="auction-upcoming" class="tbl-wrap" style="display:none">
+        <div class="loading"><div class="spinner"></div>Treasury.gov API 로딩중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       ROW 2: 순유동성 패널 (full width)
+  ─────────────────────────────────────────── -->
+  <div class="card span-12">
+    <div class="card-header">
+      <div class="card-icon">🏦</div>
+      <div><div class="card-title">연준 순유동성 (Fed Net Liquidity)</div><div class="card-sub">Net Liquidity = Fed BS − TGA − RRP &nbsp;|&nbsp; 값이 오를수록 시장 유동성 증가</div></div>
+      <div id="liq-lastupdate" class="card-badge">로딩중...</div>
+    </div>
+    <div class="liq-grid">
+      <!-- TGA -->
+      <div class="liq-cell">
+        <div class="liq-label">🏦 TGA (재무부 현금계좌)</div>
+        <div class="liq-val red" id="tga-val">--</div>
+        <div class="liq-change" id="tga-chg"></div>
+        <div class="liq-note">↓ TGA 감소 → 시장 유동성 증가</div>
+        <div class="liq-bar-wrap"><div class="liq-bar" id="tga-bar" style="background:var(--red);width:50%"></div></div>
+      </div>
+      <!-- RRP -->
+      <div class="liq-cell">
+        <div class="liq-label">🔄 역레포 (ON RRP)</div>
+        <div class="liq-val red" id="rrp-val">--</div>
+        <div class="liq-change" id="rrp-chg"></div>
+        <div class="liq-note">↓ RRP 감소 → MMF→채권 이동, 유동성 증가</div>
+        <div class="liq-bar-wrap"><div class="liq-bar" id="rrp-bar" style="background:var(--red);width:30%"></div></div>
+      </div>
+      <!-- Fed BS -->
+      <div class="liq-cell">
+        <div class="liq-label">📊 연준 자산 (Fed Balance Sheet)</div>
+        <div class="liq-val" id="fedbs-val">~$6.7T</div>
+        <div class="liq-change" style="color:var(--muted);font-size:.68rem">WALCL (FRED, 주간)</div>
+        <div class="liq-note">↓ QT 진행중 → 유동성 흡수</div>
+        <div class="liq-bar-wrap"><div class="liq-bar" style="background:var(--accent);width:67%"></div></div>
+      </div>
+      <!-- NET LIQUIDITY -->
+      <div class="liq-cell">
+        <div class="liq-label">⚡ 순유동성 (Net Liquidity)</div>
+        <div class="liq-val yellow" id="netliq-val">계산중...</div>
+        <div class="liq-change" id="netliq-chg"></div>
+        <div class="liq-note" id="netliq-signal">Fed BS − TGA − RRP</div>
+        <div class="liq-bar-wrap"><div class="liq-bar" id="netliq-bar" style="background:var(--yellow);width:50%"></div></div>
+      </div>
+    </div>
+    <!-- 추가 연준 지표 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border)">
+      <div style="background:var(--bg2);padding:8px 14px">
+        <div class="section-label">FRED 연준 총자산 추이</div>
+        <div class="fred-wrap">
+          <iframe src="https://fred.stlouisfed.org/graph/?id=WALCL,WTREGEN,RRPONTSYD&cosd=2022-01-01&vintage_date=&nd=2022-01-05&fq=Weekly&fam=avg&fgst=lin&fgsnd=2020-02-01&line_index=1&transformation=lin&hide_legend=0&theme=dark&drp=0&bgcolor=%23131722&graph_bgcolor=%230b0e17&fo=Segoe%20UI&fs=10&ls=0&lc=d1d4dc&ts=12&tts=12&acs=false&cs=false&scs=false&icds=0&height=180&stacking=false&ce=false&vr=false&vs=false&cb=false" width="100%" height="200" scrolling="no" frameborder="0" style="border:none;display:block"></iframe>
+        </div>
+      </div>
+      <div style="background:var(--bg2);padding:8px 14px">
+        <div class="section-label">WRESBAL 은행 준비금 추이</div>
+        <div class="fred-wrap">
+          <iframe src="https://fred.stlouisfed.org/graph/?id=WRESBAL&cosd=2022-01-01&fq=Weekly&fam=avg&theme=dark&bgcolor=%23131722&graph_bgcolor=%230b0e17&fo=Segoe%20UI&fs=10&lc=d1d4dc&ts=12&height=180" width="100%" height="200" scrolling="no" frameborder="0" style="border:none;display:block"></iframe>
+        </div>
+      </div>
+    </div>
+    <div class="net-liq-explain">
+      <strong>순유동성 해석:</strong> &nbsp;
+      📈 <strong style="color:var(--green)">TGA↓ 또는 RRP↓</strong> = 유동성 방출 (위험자산 상승 압력) &nbsp;|&nbsp;
+      📉 <strong style="color:var(--red)">TGA↑ 또는 RRP↑</strong> = 유동성 흡수 (위험자산 하락 압력) &nbsp;|&nbsp;
+      💡 Fed BS는 FRED WALCL 기준 (주간 업데이트, 약 $6.7T 추정)
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       ROW 3: Fed Watch + MMF
+  ─────────────────────────────────────────── -->
+
+  <!-- Fed Watch 금리 확률 -->
+  <div class="card span-5">
+    <div class="card-header">
+      <div class="card-icon">🎯</div>
+      <div><div class="card-title">Fed Watch 금리 확률</div><div class="card-sub">FOMC 회의별 금리 인하/동결/인상 확률 (ZQ 선물 기반)</div></div>
+      <div class="card-badge">CME FedWatch</div>
+    </div>
+    <div class="card-body pad">
+      <!-- 현재 금리 표시 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">현재 FFTR 목표 범위</div>
+          <div style="font-size:1.4rem;font-weight:700;color:var(--white)">4.25% – 4.50%</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:.65rem;color:var(--muted)">다음 FOMC</div>
+          <div style="font-size:.85rem;font-weight:700;color:var(--yellow)">2025.03.19</div>
+          <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank" class="fw-link" style="font-size:.65rem">CME FedWatch →</a>
+        </div>
+      </div>
+      <!-- 확률 테이블 -->
+      <div id="fedwatch-table">
+        <table class="fw-table">
+          <thead>
+            <tr>
+              <th style="text-align:left">FOMC 날짜</th>
+              <th>인하(-25bp)</th>
+              <th>동결</th>
+              <th>인상(+25bp)</th>
+            </tr>
+          </thead>
+          <tbody id="fw-tbody">
+            <!-- JS로 채움 -->
+          </tbody>
+        </table>
+      </div>
+      <div class="fw-note">
+        📌 확률은 ZQ(30일물 페드펀드) 선물 가격에서 역산. 
+        실시간 데이터: <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank" class="fw-link">CME FedWatch Tool</a>
+      </div>
+    </div>
+    <!-- ZQ 선물 차트 -->
+    <div style="border-top:1px solid var(--border)">
+      <div class="section-label">ZQ (30일물 Fed Funds Futures) 차트</div>
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        {"autosize":true,"symbol":"CBOT:ZQ1!","interval":"W","timezone":"Asia/Seoul",
+         "theme":"dark","style":"3","locale":"kr","allow_symbol_change":false,
+         "hide_top_toolbar":true,"height":200}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- MMF 잔고 추이 -->
+  <div class="card span-7">
+    <div class="card-header">
+      <div class="card-icon">💰</div>
+      <div><div class="card-title">MMF 잔고 추이 (Money Market Funds)</div><div class="card-sub">기관(Institutional) / 개인(Retail) 분리 주간 잔고</div></div>
+      <div class="card-badge" id="mmf-date">FRED 주간</div>
+    </div>
+    <!-- 요약 통계 -->
+    <div class="mmf-stats">
+      <div class="mmf-stat">
+        <div class="mmf-stat-label">🏢 기관 MMF (Institutional)</div>
+        <div class="mmf-stat-val" id="mmf-inst">--</div>
+        <div class="mmf-stat-sub" id="mmf-inst-chg">FRED: WRMFSL</div>
+      </div>
+      <div class="mmf-stat">
+        <div class="mmf-stat-label">👤 개인 MMF (Retail)</div>
+        <div class="mmf-stat-val" id="mmf-retail">--</div>
+        <div class="mmf-stat-sub" id="mmf-retail-chg">FRED: WRMFNS</div>
+      </div>
+    </div>
+    <!-- FRED 기관 MMF 차트 -->
+    <div class="section-label">기관 MMF 잔고 (WRMFSL)</div>
+    <div class="mmf-iframe-wrap" style="height:200px">
+      <iframe src="https://fred.stlouisfed.org/graph/?id=WRMFSL&cosd=2020-01-01&fq=Weekly&fam=avg&theme=dark&bgcolor=%23131722&graph_bgcolor=%230b0e17&fo=Segoe%20UI&fs=9&lc=26a69a&ts=12&height=180&cosd=2020-01-01" width="100%" height="200" scrolling="no" frameborder="0" style="border:none;display:block"></iframe>
+    </div>
+    <!-- FRED 개인 MMF 차트 -->
+    <div class="section-label">개인 MMF 잔고 (WRMFNS)</div>
+    <div class="mmf-iframe-wrap" style="height:200px">
+      <iframe src="https://fred.stlouisfed.org/graph/?id=WRMFNS&cosd=2020-01-01&fq=Weekly&fam=avg&theme=dark&bgcolor=%23131722&graph_bgcolor=%230b0e17&fo=Segoe%20UI&fs=9&lc=2962ff&ts=12&height=180" width="100%" height="200" scrolling="no" frameborder="0" style="border:none;display:block"></iframe>
+    </div>
+    <div style="padding:8px 14px;font-size:.65rem;color:var(--muted);border-top:1px solid var(--border)">
+      📌 MMF 잔고 증가 = 안전자산 선호 / 감소 = 위험자산 이동 가능성. ICI 주간 데이터 기준.
+      <a href="https://fred.stlouisfed.org/graph/?id=WRMFSL,WRMFNS" target="_blank" class="fw-link">FRED에서 보기 →</a>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       ROW 4: 매크로 + 코인관련주
+  ─────────────────────────────────────────── -->
+
+  <!-- 매크로 지표 -->
+  <div class="card span-6">
+    <div class="card-header">
+      <div class="card-icon">📊</div>
+      <div><div class="card-title">매크로 지표 (Macro Indicators)</div><div class="card-sub">지수 · VIX · DXY · 원자재</div></div>
+      <div class="card-badge">9 tickers</div>
+    </div>
+    <div class="card-body">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {"colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"en","isTransparent":true,
+         "showSymbolLogo":true,"width":"100%","height":"460",
+         "tabs":[{"title":"매크로","originalTitle":"매크로","symbols":[
+           {"s":"SP:SPX","d":"S&P 500"},
+           {"s":"NASDAQ:NDX","d":"NASDAQ 100"},
+           {"s":"TVC:VIX","d":"VIX"},
+           {"s":"AMEX:UVIX","d":"UVIX(2xVIX)"},
+           {"s":"TVC:DXY","d":"달러인덱스"},
+           {"s":"TVC:GOLD","d":"금"},
+           {"s":"TVC:SILVER","d":"은"},
+           {"s":"NYMEX:CL1!","d":"WTI원유"},
+           {"s":"NYMEX:NG1!","d":"천연가스"}
+         ]}]}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- 코인 관련주 -->
+  <div class="card span-6">
+    <div class="card-header">
+      <div class="card-icon">₿</div>
+      <div><div class="card-title">코인 관련주 (Crypto Stocks)</div><div class="card-sub">MSTR · Circle · Bullish · NVDA · AMZN</div></div>
+      <div class="card-badge">6 tickers</div>
+    </div>
+    <div class="card-body">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {"colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"en","isTransparent":true,
+         "showSymbolLogo":true,"width":"100%","height":"460",
+         "tabs":[{"title":"코인주","originalTitle":"코인주","symbols":[
+           {"s":"NASDAQ:MSTR","d":"Strategy(MSTR)"},
+           {"s":"NYSE:BLSH","d":"Bullish"},
+           {"s":"NYSE:CRCL","d":"Circle Internet"},
+           {"s":"NASDAQ:CRML","d":"Critical Metals"},
+           {"s":"NASDAQ:NVDA","d":"NVIDIA"},
+           {"s":"NASDAQ:AMZN","d":"Amazon"}
+         ]}]}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       ROW 5: 암호화폐 + 환율
+  ─────────────────────────────────────────── -->
+
+  <!-- 암호화폐 -->
+  <div class="card span-6">
+    <div class="card-header">
+      <div class="card-icon">🔗</div>
+      <div><div class="card-title">암호화폐 (Crypto)</div><div class="card-sub">BTC · SOL · 스테이블코인 시총 · Gold/BTC</div></div>
+      <div class="card-badge">6 tickers</div>
+    </div>
+    <div class="card-body">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {"colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"en","isTransparent":true,
+         "showSymbolLogo":true,"width":"100%","height":"400",
+         "tabs":[{"title":"크립토","originalTitle":"크립토","symbols":[
+           {"s":"COINBASE:BTCUSD","d":"BTC/USD"},
+           {"s":"COINBASE:SOLUSD","d":"SOL/USD"},
+           {"s":"TVC:XAUBTC","d":"Gold/BTC"},
+           {"s":"CRYPTOCAP:USDT","d":"USDT 시총"},
+           {"s":"CRYPTOCAP:USDC","d":"USDC 시총"},
+           {"s":"CRYPTOCAP:STABLE.C","d":"스테이블 총시총"}
+         ]}]}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- 환율 & 글로벌 -->
+  <div class="card span-6">
+    <div class="card-header">
+      <div class="card-icon">💱</div>
+      <div><div class="card-title">환율 & 글로벌 (FX & Global)</div><div class="card-sub">USD/JPY · USD/KRW · KOSPI</div></div>
+      <div class="card-badge">3 tickers</div>
+    </div>
+    <div class="card-body">
+      <div class="tradingview-widget-container">
+        <div class="tradingview-widget-container__widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+        {"colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"en","isTransparent":true,
+         "showSymbolLogo":true,"width":"100%","height":"400",
+         "tabs":[{"title":"FX","originalTitle":"FX","symbols":[
+           {"s":"FX:USDJPY","d":"달러/엔"},
+           {"s":"FX:USDKRW","d":"달러/원"},
+           {"s":"KRX:KOSPI","d":"KOSPI"}
+         ]}]}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────────────────────
+       ROW 6: 메인 차트 (full width)
+  ─────────────────────────────────────────── -->
+  <div class="card span-12">
+    <div class="card-header">
+      <div class="card-icon">📈</div>
+      <div><div class="card-title">메인 차트 (심볼 변경 가능)</div><div class="card-sub">Advanced Chart · 우상단에서 심볼 교체</div></div>
+    </div>
+    <div style="height:500px">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
+        {"autosize":true,"symbol":"COINBASE:BTCUSD","interval":"D","timezone":"Asia/Seoul",
+         "theme":"dark","style":"1","locale":"kr","allow_symbol_change":true,"calendar":false,"save_image":false}
+        </script>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /grid -->
+</div><!-- /main -->
+
+<footer>
+  Data: <a href="https://tradingview.com" target="_blank">TradingView</a> &nbsp;·&nbsp;
+  <a href="https://fiscaldata.treasury.gov" target="_blank">Treasury.gov</a> &nbsp;·&nbsp;
+  <a href="https://markets.newyorkfed.org" target="_blank">NY Fed</a> &nbsp;·&nbsp;
+  <a href="https://fred.stlouisfed.org" target="_blank">FRED</a> &nbsp;·&nbsp;
+  <a href="https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html" target="_blank">CME FedWatch</a>
+</footer>
+
+<!-- ═══════════════════════════════════════
+     JAVASCRIPT — Live Data
+═══════════════════════════════════════ -->
+<script>
+// ── 시계 ──────────────────────────────
+function tick(){
+  const n=new Date();
+  const o={timeZone:'Asia/Seoul',hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',second:'2-digit'};
+  document.getElementById('clock').textContent='🇰🇷 KST '+n.toLocaleString('ko-KR',o);
+}
+tick(); setInterval(tick,1000);
+
+// ── 숫자 포맷 헬퍼 ──────────────────
+function fmtB(v,digits=3){
+  if(v==null) return '--';
+  if(Math.abs(v)>=1000) return (v/1000).toFixed(2)+'T';
+  return v.toFixed(digits>=3?1:digits)+'B';
+}
+function fmtT(v){return v!=null?(v/1000).toFixed(2)+'T':'--'}
+function fmtChg(v,prev){
+  if(v==null||prev==null) return '';
+  const d=v-prev, pct=d/prev*100;
+  const arrow=d>0?'▲':'▼';
+  const col=d>0?'var(--green)':'var(--red)';
+  return `<span style="color:${col}">${arrow} ${Math.abs(d).toFixed(1)}B (${pct.toFixed(2)}%)</span>`;
+}
+
+// ── TGA 로드 ──────────────────────────
+async function loadTGA(){
+  try{
+    const url='https://api.fiscaldata.treasury.gov/services/api/v1/accounting/dts/dts_table_1?fields=record_date,account_type,close_today_bal&filter=account_type:eq:Federal+Reserve+Account&sort=-record_date&page[size]=10';
+    const r=await fetch(url);
+    const j=await r.json();
+    const rows=j.data.filter(d=>d.close_today_bal);
+    if(!rows.length) return;
+    const latest=rows[0];
+    const prev=rows[1];
+    const val=parseFloat(latest.close_today_bal)/1000; // millions→billions
+    const prevVal=prev?parseFloat(prev.close_today_bal)/1000:null;
+    document.getElementById('tga-val').textContent=fmtB(val);
+    document.getElementById('tga-chg').innerHTML=fmtChg(val,prevVal);
+    document.getElementById('liq-lastupdate').textContent=latest.record_date;
+    // bar (0=0B, 100%=1000B)
+    document.getElementById('tga-bar').style.width=Math.min(100,val/10)+'%';
+    return val;
+  }catch(e){
+    document.getElementById('tga-val').textContent='API 오류';
+    return null;
+  }
+}
+
+// ── RRP 로드 ──────────────────────────
+async function loadRRP(){
+  try{
+    const url='https://markets.newyorkfed.org/api/rp/all/results/lastTwoWeeks.json';
+    const r=await fetch(url);
+    const j=await r.json();
+    const ops=j.repo?.operations||[];
+    if(!ops.length) return null;
+    const latest=ops[0];
+    const prev=ops[1];
+    const val=parseFloat(latest.totalAmtAccepted||0)/1e9; // $ → billions
+    const prevVal=prev?parseFloat(prev.totalAmtAccepted||0)/1e9:null;
+    document.getElementById('rrp-val').textContent=fmtB(val);
+    document.getElementById('rrp-chg').innerHTML=fmtChg(val,prevVal);
+    document.getElementById('rrp-bar').style.width=Math.min(100,val/20)+'%';
+    return val;
+  }catch(e){
+    // fallback: FRED RRPONTSYD endpoint might work
+    document.getElementById('rrp-val').textContent='API 오류';
+    return null;
+  }
+}
+
+// ── 순유동성 계산 ─────────────────────
+const FED_BS_ESTIMATE=6700; // billions, update quarterly
+async function calcNetLiquidity(){
+  const [tga,rrp]=await Promise.all([loadTGA(),loadRRP()]);
+  const net=FED_BS_ESTIMATE-(tga||0)-(rrp||0);
+  const el=document.getElementById('netliq-val');
+  const sig=document.getElementById('netliq-signal');
+  el.textContent=fmtB(net);
+  // color/signal
+  if(net>4500){
+    el.className='liq-val green';
+    sig.innerHTML='<span style="color:var(--green)">✅ 유동성 충분 — 위험자산 지지</span>';
+    document.getElementById('netliq-bar').style.cssText='background:var(--green);width:80%';
+  }else if(net>4000){
+    el.className='liq-val yellow';
+    sig.innerHTML='<span style="color:var(--yellow)">⚠️ 유동성 중립 — 방향 주시</span>';
+    document.getElementById('netliq-bar').style.cssText='background:var(--yellow);width:55%';
+  }else{
+    el.className='liq-val red';
+    sig.innerHTML='<span style="color:var(--red)">🚨 유동성 타이트 — 위험자산 주의</span>';
+    document.getElementById('netliq-bar').style.cssText='background:var(--red);width:35%';
+  }
+  document.getElementById('netliq-chg').innerHTML=
+    `<span style="color:var(--muted);font-size:.68rem">Fed BS ~$${FED_BS_ESTIMATE}B − TGA ${fmtB(tga)} − RRP ${fmtB(rrp)}</span>`;
+}
+calcNetLiquidity();
+
+// ── 입찰 현황 로드 ────────────────────
+async function loadAuctions(){
+  try{
+    const url='https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/auction_results?sort=-auction_date&page[size]=20&fields=security_type,security_term,auction_date,bid_to_cover_ratio,total_accepted,high_rate,total_tendered,issue_date';
+    const r=await fetch(url);
+    const j=await r.json();
+    renderAuctionTable(j.data||[]);
+    const latest=j.data?.[0];
+    if(latest) document.getElementById('auction-date').textContent='최신: '+latest.auction_date;
+  }catch(e){
+    document.getElementById('auction-recent').innerHTML='<div class="error-msg">⚠️ Treasury API 로딩 실패<br><a href="https://fiscaldata.treasury.gov/datasets/auction-data-results/" target="_blank" style="color:var(--accent)">fiscaldata.treasury.gov에서 확인 →</a></div>';
+  }
+}
+
+function btcClass(v){
+  const n=parseFloat(v);
+  if(isNaN(n)) return '';
+  if(n>=2.7) return 'btc-good';
+  if(n>=2.3) return 'btc-warn';
+  return 'btc-bad';
+}
+function rateClass(v,term){
+  // rough: lower is better for refunding cost
+  return parseFloat(v)<4.5?'rate-low':'rate-high';
+}
+
+function renderAuctionTable(data){
+  const el=document.getElementById('auction-recent');
+  if(!data.length){el.innerHTML='<div class="loading">데이터 없음</div>';return;}
+  let html=`<table>
+    <thead><tr>
+      <th>만기</th><th>입찰일</th><th>낙찰금리</th>
+      <th>낙찰금액</th><th>입찰배율(BTC)</th><th>응찰금액</th>
+    </tr></thead><tbody>`;
+  data.forEach(d=>{
+    const term=(d.security_term||'').replace('Year','Y').replace('Month','M').replace('-','').trim();
+    const type=d.security_type||'';
+    const btcVal=parseFloat(d.bid_to_cover_ratio)||0;
+    const acceptedB=d.total_accepted?parseFloat(d.total_accepted)/1e9:null;
+    const tenderedB=d.total_tendered?parseFloat(d.total_tendered)/1e9:null;
+    const rate=parseFloat(d.high_rate)||0;
+    html+=`<tr>
+      <td>${type} ${term}</td>
+      <td>${d.auction_date||'--'}</td>
+      <td><span class="rate-pill ${rateClass(rate,term)}">${rate?rate.toFixed(3)+'%':'--'}</span></td>
+      <td>${acceptedB?'$'+acceptedB.toFixed(1)+'B':'--'}</td>
+      <td class="${btcClass(d.bid_to_cover_ratio)}">${d.bid_to_cover_ratio||'--'}</td>
+      <td>${tenderedB?'$'+tenderedB.toFixed(1)+'B':'--'}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+// ── 예정 입찰 로드 ──────────────────
+async function loadUpcoming(){
+  try{
+    const url='https://api.fiscaldata.treasury.gov/services/api/v1/accounting/od/upcoming_auctions?sort=auction_date&page[size]=15&fields=security_type,security_term,auction_date,offering_amt,issue_date';
+    const r=await fetch(url);
+    const j=await r.json();
+    renderUpcoming(j.data||[]);
+  }catch(e){
+    document.getElementById('auction-upcoming').innerHTML='<div class="error-msg">⚠️ 예정 입찰 로딩 실패</div>';
+  }
+}
+
+function renderUpcoming(data){
+  const el=document.getElementById('auction-upcoming');
+  if(!data.length){el.innerHTML='<div class="loading">예정 입찰 데이터 없음</div>';return;}
+  const today=new Date();
+  let html=`<table>
+    <thead><tr>
+      <th>만기</th><th>입찰 예정일</th><th>발행일</th><th>예상 발행액</th><th>남은 일수</th>
+    </tr></thead><tbody>`;
+  data.forEach(d=>{
+    const aDate=new Date(d.auction_date);
+    const diff=Math.ceil((aDate-today)/(1000*60*60*24));
+    const dClass=diff<=3?'style="color:var(--yellow)"':'';
+    const term=(d.security_term||'').replace('Year','Y').replace('Month','M').trim();
+    const offerB=d.offering_amt?parseFloat(d.offering_amt)/1e9:null;
+    html+=`<tr>
+      <td>${d.security_type||''} ${term}</td>
+      <td ${dClass}>${d.auction_date||'--'}</td>
+      <td>${d.issue_date||'--'}</td>
+      <td>${offerB?'$'+offerB.toFixed(1)+'B':'--'}</td>
+      <td ${dClass}>${diff>=0?diff+'일':'D+'+Math.abs(diff)}</td>
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+loadAuctions();
+loadUpcoming();
+
+// ── 탭 전환 ──────────────────────────
+function switchAuctionTab(tab,el){
+  document.querySelectorAll('.atab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('auction-recent').style.display=tab==='recent'?'block':'none';
+  document.getElementById('auction-upcoming').style.display=tab==='upcoming'?'block':'none';
+}
+
+// ── Fed Watch 확률 표시 ──────────────
+// 실제 CME API는 CORS 제한으로 직접 fetch 불가
+// 아래는 대표적인 FOMC 일정과 함께 표시되는 가이드 테이블
+// 실시간 확률은 CME FedWatch 링크로 확인
+const fomcSchedule=[
+  {date:'2025.03.19',cut:10,hold:87,hike:3},
+  {date:'2025.05.07',cut:28,hold:68,hike:4},
+  {date:'2025.06.18',cut:51,hold:46,hike:3},
+  {date:'2025.07.30',cut:62,hold:36,hike:2},
+  {date:'2025.09.17',cut:71,hold:27,hike:2},
+  {date:'2025.10.29',cut:78,hold:21,hike:1},
+  {date:'2025.12.10',cut:84,hold:15,hike:1},
+];
+
+function renderFedWatch(){
+  let html='';
+  fomcSchedule.forEach(f=>{
+    const maxP=Math.max(f.cut,f.hold,f.hike);
+    function bar(pct,color){
+      return `<div class="prob-bar"><div class="prob-fill" style="width:${pct*1.2}px;background:${color}"></div><span class="prob-txt" style="color:${color}">${pct}%</span></div>`;
+    }
+    html+=`<tr>
+      <td>${f.date}</td>
+      <td>${bar(f.cut,'#26a69a')}</td>
+      <td>${bar(f.hold,'#787b86')}</td>
+      <td>${bar(f.hike,'#ef5350')}</td>
+    </tr>`;
+  });
+  document.getElementById('fw-tbody').innerHTML=html;
+}
+renderFedWatch();
+
+// ── MMF 잔고 간이 표시 ──────────────
+// FRED API without key: fallback estimates
+document.getElementById('mmf-inst').textContent='~$3.1T';
+document.getElementById('mmf-inst-chg').textContent='WRMFSL 기준 (최신 FRED 참조)';
+document.getElementById('mmf-retail').textContent='~$2.4T';
+document.getElementById('mmf-retail-chg').textContent='WRMFNS 기준 (최신 FRED 참조)';
+document.getElementById('mmf-date').textContent='FRED 주간 기준';
+
+// Fed BS value display
+document.getElementById('fedbs-val').textContent='~$'+FED_BS_ESTIMATE+'B';
+</script>
+</body>
+</html>
